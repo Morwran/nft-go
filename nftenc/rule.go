@@ -65,24 +65,21 @@ func (enc *RuleEncoder) Format() (string, error) {
 // MarshalJSON encodes the rule to JSON
 func (enc *RuleEncoder) MarshalJSON() ([]byte, error) {
 	rl := enc.rule
-	expr, err := exprenc.NewRuleExprEncoder(rl).MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
+
 	rule := struct {
 		Family  string `json:"family"`
 		Table   string `json:"table"`
 		Chain   string `json:"chain"`
 		Handle  uint64 `json:"handle"`
 		Comment string `json:"comment,omitempty"`
-		Exprs   []byte `json:"exprs"`
+		Exprs   any    `json:"exprs"`
 	}{
 		Family:  TableFamily(rl.Table.Family).String(),
 		Table:   rl.Table.Name,
 		Chain:   rl.Chain.Name,
 		Handle:  rl.Handle,
 		Comment: enc.Comment(),
-		Exprs:   expr,
+		Exprs:   exprenc.NewRuleExprEncoder(rl),
 	}
 	root := map[string]interface{}{
 		"rule": rule,

@@ -11,7 +11,7 @@ import (
 type (
 	ChainEncoder struct {
 		chain *nftLib.Chain
-		rules []RuleEncoder
+		rules []*RuleEncoder
 	}
 
 	ChainHook     nftLib.ChainHook
@@ -19,7 +19,9 @@ type (
 	ChainPolicy   nftLib.ChainPolicy
 )
 
-func NewChainEncoder(c *nftLib.Chain, rules ...RuleEncoder) *ChainEncoder {
+var _ Encoder = (*ChainEncoder)(nil)
+
+func NewChainEncoder(c *nftLib.Chain, rules ...*RuleEncoder) *ChainEncoder {
 	return &ChainEncoder{chain: c, rules: rules}
 }
 func (enc *ChainEncoder) String() string {
@@ -55,23 +57,25 @@ func (enc *ChainEncoder) Format() (string, error) {
 	}
 
 	for _, rule := range enc.rules {
-		humanRl, err := rule.Format()
+		if rule == nil {
+			continue
+		}
+		human, err := rule.Format()
 		if err != nil {
 			return "", err
 		}
-		if humanRl == "" {
+		if human == "" {
 			continue
 		}
 		sb.WriteString("\t\t")
-		sb.WriteString(humanRl)
+		sb.WriteString(human)
 		sb.WriteByte('\n')
 	}
 	sb.WriteString("\t}")
 	return sb.String(), nil
 }
 func (enc *ChainEncoder) MarshalJSON() ([]byte, error) {
-	chain := enc.chain
-	j := struct {
+	chain := struct {
 		Family   string           `json:"family"`
 		Table    string           `json:"table"`
 		Name     string           `json:"name"`
@@ -81,16 +85,17 @@ func (enc *ChainEncoder) MarshalJSON() ([]byte, error) {
 		Priority string           `json:"priority,omitempty"`
 		Policy   string           `json:"policy,omitempty"`
 	}{
-		Name:     chain.Name,
-		Type:     chain.Type,
-		Hook:     ChainHook(*chain.Hooknum).String(),
-		Priority: ChainPriority(*chain.Priority).String(),
-		Policy:   ChainPolicy(*chain.Policy).String(),
+		Family:   TableFamily(enc.chain.Table.Family).String(),
+		Table:    enc.chain.Table.Name,
+		Handle:   enc.chain.Handle,
+		Name:     enc.chain.Name,
+		Type:     enc.chain.Type,
+		Hook:     ChainHook(*enc.chain.Hooknum).String(),
+		Priority: ChainPriority(*enc.chain.Priority).String(),
+		Policy:   ChainPolicy(*enc.chain.Policy).String(),
 	}
-	root := map[string]any{
-		"chain": j,
-	}
-	return json.Marshal(root)
+
+	return json.Marshal(map[string]any{"chain": chain})
 }
 
 func (c ChainHook) String() string {

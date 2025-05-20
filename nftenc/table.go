@@ -29,7 +29,8 @@ var _ Encoder = (*TableEncoder)(nil)
 func NewTableEncoder(t *nftLib.Table, items ...Encoder) *TableEncoder {
 	for _, item := range items {
 		switch item.(type) {
-		case *RuleEncoder:
+		case *SetEncoder:
+		case *ChainEncoder:
 		default:
 			panic(fmt.Sprintf("unsupported table item type %T", item))
 		}
@@ -67,40 +68,88 @@ func (enc *TableEncoder) MustString() string {
 func (enc *TableEncoder) Format() (string, error) {
 	tbl := enc.table
 	sb := strings.Builder{}
-	m := make(map[string][]Encoder)
-	for _, item := range enc.items {
-		if item == nil {
-			continue
+	m := enc.ItemsToMap()
+
+	write := func(typ Encoder) error {
+		if group, ok := m[fmt.Sprintf("%T", typ)]; ok {
+			str, err := enc.formatItems(group...)
+			if err != nil {
+				return err
+			}
+			sb.WriteString(str)
 		}
-		m[fmt.Sprintf("%T", item)] = append(m[fmt.Sprintf("%T", item)], item)
+		return nil
 	}
+
 	sb.WriteString(fmt.Sprintf("table %s %s {\n", TableFamily(tbl.Family), tbl.Name))
-	if rls, ok := m[fmt.Sprintf("%T", (*RuleEncoder)(nil))]; ok {
-		humanRl, err := enc.formatItems(rls...)
-		if err != nil {
-			return "", err
-		}
-		sb.WriteString(humanRl)
+	if err := write((*SetEncoder)(nil)); err != nil {
+		return "", err
+	}
+	if err := write((*ChainEncoder)(nil)); err != nil {
+		return "", err
 	}
 	sb.WriteByte('}')
-
 	return sb.String(), nil
 }
 
 // MarshalJSON encodes the table to JSON.
 func (enc *TableEncoder) MarshalJSON() ([]byte, error) {
-	tbl := enc.table
-	j := struct {
+	t := struct {
 		Family string `json:"family"`
 		Name   string `json:"name"`
 	}{
-		Family: TableFamily(tbl.Family).String(),
-		Name:   tbl.Name,
+		Family: TableFamily(enc.table.Family).String(),
+		Name:   enc.table.Name,
 	}
-	root := map[string]any{
-		"table": j,
+
+	tbl, err := json.Marshal(map[string]any{"table": t})
+	if err != nil {
+		return nil, err
 	}
-	return json.Marshal(root)
+	out := append([]json.RawMessage(nil), tbl)
+	m := enc.ItemsToMap()
+	encode := func(typ Encoder) error {
+		if group, ok := m[fmt.Sprintf("%T", typ)]; ok {
+			for _, item := range group {
+				itemJson, err := item.MarshalJSON()
+				if err != nil {
+					return err
+				}
+				out = append(out, itemJson)
+				if ch, ok := item.(*ChainEncoder); ok {
+					for _, rule := range ch.rules {
+						ruleJson, err := rule.MarshalJSON()
+						if err != nil {
+							return err
+						}
+						out = append(out, ruleJson)
+					}
+				}
+			}
+		}
+		return nil
+	}
+	if err = encode((*SetEncoder)(nil)); err != nil {
+		return nil, err
+	}
+
+	if err = encode((*ChainEncoder)(nil)); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(out)
+}
+
+func (enc *TableEncoder) ItemsToMap() map[string][]Encoder {
+	m := make(map[string][]Encoder)
+	for _, item := range enc.items {
+		if item == nil {
+			continue
+		}
+		key := fmt.Sprintf("%T", item)
+		m[key] = append(m[key], item)
+	}
+	return m
 }
 
 func (enc *TableEncoder) formatItems(items ...Encoder) (string, error) {
