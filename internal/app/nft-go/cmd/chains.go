@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/Morwran/nft-go/nftenc"
+
 	nftLib "github.com/google/nftables"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -50,7 +51,6 @@ func getChainEncoders(conn *nftLib.Conn, table *nftLib.Table, f ruleEncFn) ([]nf
 		var rlEncs []*nftenc.RuleEncoder
 		if f != nil {
 			rlEncs, err = f(chain)
-
 		}
 		if err != nil {
 			return nil, err

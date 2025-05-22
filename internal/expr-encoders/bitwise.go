@@ -76,7 +76,7 @@ func (b *bitwiseEncoder) EncodeJSON(ctx *ctx) ([]byte, error) {
 
 	exp := srcReg.Data
 
-	if !(srcReg.Len > 0 && scan0(mask, 0) >= int(srcReg.Len)) {
+	if !(srcReg.Len > 0 && scan0(mask, 0) >= srcReg.Len) {
 		exp = exprCmp{
 			Op:    LogicAND.String(),
 			Left:  exp,

@@ -92,8 +92,8 @@ func (r *RuleExprEncoder) MarshalJSON() ([]byte, error) {
 		}
 
 		out = append(out, json.RawMessage(j))
-
 	}
+
 	return json.Marshal(out)
 }
 

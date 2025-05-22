@@ -55,7 +55,6 @@ func (b *exthdrEncoder) EncodeIR(ctx *ctx) (irNode, error) {
 	}
 
 	return simpleIR(fmt.Sprintf("reset %s", exp)), nil
-
 }
 
 func (b *exthdrEncoder) EncodeJSON(ctx *ctx) ([]byte, error) {

@@ -111,16 +111,17 @@ func (enc *TableEncoder) MarshalJSON() ([]byte, error) {
 	encode := func(typ Encoder) error {
 		if group, ok := m[fmt.Sprintf("%T", typ)]; ok {
 			for _, item := range group {
-				itemJson, err := item.MarshalJSON()
-				if err != nil {
-					return err
+				itemJson, e := item.MarshalJSON()
+				if e != nil {
+					return e
 				}
 				out = append(out, itemJson)
 				if ch, ok := item.(*ChainEncoder); ok {
+					var ruleJson []byte
 					for _, rule := range ch.rules {
-						ruleJson, err := rule.MarshalJSON()
-						if err != nil {
-							return err
+						ruleJson, e = rule.MarshalJSON()
+						if e != nil {
+							return e
 						}
 						out = append(out, ruleJson)
 					}
@@ -188,5 +189,5 @@ func (t TableFamily) String() string {
 	case nftLib.TableFamilyBridge:
 		return "bridge"
 	}
-	return "unknown"
+	return "unknown" //nolint:goconst
 }

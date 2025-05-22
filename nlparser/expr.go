@@ -47,7 +47,7 @@ func init() {
 func exprsFromBytes(fam byte, ad *netlink.AttributeDecoder) ([]expr.Any, error) {
 	var exprs []expr.Any
 	ad.Do(func(b []byte) error {
-		ad, err := netlink.NewAttributeDecoder(b)
+		ad, err := netlink.NewAttributeDecoder(b) //nolint:govet
 		if err != nil {
 			return err
 		}

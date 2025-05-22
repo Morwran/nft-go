@@ -41,7 +41,7 @@ func (b *payloadEncoder) EncodeIR(ctx *ctx) (irNode, error) {
 	return simpleIR(fmt.Sprintf("%s set %s", key, srcReg.HumanExpr)), nil
 }
 
-// EncodeJSON produces a JSON serialisation compatible with nft‑go’s CLI tools.
+// EncodeJSON produces a JSON serialization compatible with nft‑go’s CLI tools.
 func (b *payloadEncoder) EncodeJSON(ctx *ctx) ([]byte, error) {
 	key := b.jsonKey()
 
@@ -98,7 +98,7 @@ func (b *payloadEncoder) buildPlWithMask(ctx *ctx, mask []byte) string {
 	)
 }
 
-// jsonKey returns the canonical JSON representation used when serialising
+// jsonKey returns the canonical JSON representation used when serializing
 // rulesets.  Stable on purpose – human‑readable descriptions are *not* embedded
 // to avoid churn in generated JSON.
 func (b *payloadEncoder) jsonKey() any {
@@ -142,7 +142,7 @@ func (b *payloadEncoder) resolveHeader(offset pr.HeaderOffset, ctx *ctx, include
 		protoKey = unix.IPPROTO_NONE
 	}
 
-	header := proto[pr.ProtoType(protoKey)]
+	header := proto[pr.ProtoType(protoKey)] //nolint:gosec
 	if desc, ok := header.Offsets[offset]; ok {
 		if ctx.hdr != nil {
 			*ctx.hdr = &header // update context for following expressions

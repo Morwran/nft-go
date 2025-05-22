@@ -209,7 +209,7 @@ linters:
           - errcheck
           - dupl
           - gosec
-      - path: internal/nftables
+      - path: internal/expr-encoders
         linters:
           - govet
           - goconst
@@ -245,7 +245,7 @@ formatters:
       custom-order: true
       sections:
         - standard                       # Standard section: captures all standard packages.
-        - prefix(gitlab-internal.wildberries.ru/visor) # Custom section: groups all imports with the specified Prefix.
+        - prefix(github.com/Morwran/nft-go) # Custom section: groups all imports with the specified Prefix.
         - default                        # Default section: contains all imports that could not be matched to another section type.
   exclusions:
     paths:
@@ -260,7 +260,7 @@ formatters:
       - var
       - tmp
       - internal/3d-party
-      - internal/nftables
+      - internal/expr-encoders
 
 issues:
   max-same-issues: 10

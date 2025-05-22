@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Morwran/nft-go/nftenc"
+
 	nftLib "github.com/google/nftables"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
