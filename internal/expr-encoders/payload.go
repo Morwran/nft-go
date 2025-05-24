@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Morwran/nft-go/internal/bytes"
-	pr "github.com/Morwran/nft-go/internal/protocols"
+	pr "github.com/Morwran/nft-go/pkg/protocols"
 
 	"github.com/google/nftables/expr"
 	"github.com/pkg/errors"
