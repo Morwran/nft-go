@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
@@ -23,55 +24,46 @@ type dynsetEncoder struct {
 
 func (b *dynsetEncoder) EncodeIR(ctx *ctx) (irNode, error) {
 	dyn := b.dynset
-	sb := strings.Builder{}
 	if ctx.rule == nil {
 		return nil, errors.New("ctx has no rule")
 	}
+
 	srcRegKey, ok := ctx.reg.Get(regID(dyn.SrcRegKey))
 	if !ok {
 		return nil, errors.Errorf("%T statement has no key expression", dyn)
 	}
 	exp := srcRegKey.HumanExpr
 
-	sb.WriteString(exp)
-	rule := *ctx.rule
-	rule.Exprs = dyn.Exprs
-
-	str, err := NewRuleExprEncoder(&rule).Format()
+	tmpRule := nftables.Rule{
+		Table: ctx.rule.Table,
+		Exprs: dyn.Exprs,
+	}
+	exprsStr, err := NewRuleExprEncoder(&tmpRule).Format()
 	if err != nil {
 		return nil, err
 	}
 
-	if str != "" {
-		sb.WriteByte(' ')
-		sb.WriteString(str)
-	}
-
 	if dyn.Timeout != 0 {
-		sb.WriteString(fmt.Sprintf(" timeout %s", dyn.Timeout))
+		exp = fmt.Sprintf("%s timeout %s", exp, dyn.Timeout)
 	}
 
-	if sb.Len() > 0 {
-		exp = sb.String()
-	}
-	sb.Reset()
-	setName := fmt.Sprintf(`@%s`, dyn.SetName)
+	setName := fmt.Sprintf("@%s", dyn.SetName)
+	sb := strings.Builder{}
 
-	sb.WriteString(fmt.Sprintf("%s %s { %s ", DynSetOP(dyn.Operation), setName, exp))
-	if str != "" {
-		sb.WriteString(str)
-		sb.WriteByte(' ')
+	sb.WriteString(fmt.Sprintf("%s %s { %s", DynSetOP(dyn.Operation), setName, exp))
+
+	if exprsStr != "" {
+		sb.WriteString(" ")
+		sb.WriteString(exprsStr)
 	}
 
-	srcRegData, ok := ctx.reg.Get(regID(dyn.SrcRegData))
-
-	if ok {
+	if srcRegData, ok := ctx.reg.Get(regID(dyn.SrcRegData)); ok {
 		if exprData := srcRegData.HumanExpr; exprData != "" {
-			sb.WriteString(fmt.Sprintf(": %s ", exprData))
+			sb.WriteString(fmt.Sprintf(" : %s", exprData))
 		}
 	}
 
-	sb.WriteByte('}')
+	sb.WriteString(" }")
 
 	return simpleIR(sb.String()), nil
 }
