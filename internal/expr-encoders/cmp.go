@@ -102,6 +102,7 @@ func (b *cmpEncoder) formatCmpLR(ctx *ctx, srcReg regVal) (left, right string) {
 	case *expr.Bitwise:
 		bitwiseBuilder := &bitwiseEncoder{t}
 		right = bitwiseBuilder.buildFromCmpData(ctx, cmp)
+
 	case *expr.Ct:
 		right = CtDesk[t.Key](cmp.Data)
 	case *expr.Payload:
