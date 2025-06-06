@@ -1,8 +1,6 @@
 package encoders
 
 import (
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/google/nftables"
@@ -31,7 +29,7 @@ func (sui *ctEncoderAdvancedTestSuite) Test_CtEncodeIR_Complex() {
 					Data:     []byte{byte(CtStateBitNEW | CtStateBitESTABLISHED), 0, 0, 0, 0, 0, 0, 0},
 				},
 			},
-			expected: "ct state new,established",
+			expected: "ct state established,new",
 		},
 		{
 			name: "ct direction original",
@@ -71,7 +69,7 @@ func (sui *ctEncoderAdvancedTestSuite) Test_CtEncodeIR_Complex() {
 				&expr.Ct{Key: expr.CtKeySTATUS, Register: 1},
 				&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{0x3C, 0x00, 0x00, 0x00, 0, 0, 0, 0}},
 			},
-			expected: "ct status snat,dnat,confirmed,assured",
+			expected: "ct status assured,confirmed,snat,dnat",
 		},
 		{
 			name: "ct state != established,invalid",
@@ -83,7 +81,7 @@ func (sui *ctEncoderAdvancedTestSuite) Test_CtEncodeIR_Complex() {
 					Data:     []byte{byte(CtStateBitESTABLISHED | CtStateBitINVALID), 0, 0, 0, 0, 0, 0, 0},
 				},
 			},
-			expected: "ct state != established,invalid",
+			expected: "ct state != invalid,established",
 		},
 	}
 
@@ -93,8 +91,9 @@ func (sui *ctEncoderAdvancedTestSuite) Test_CtEncodeIR_Complex() {
 			str, err := NewRuleExprEncoder(&rule).Format()
 			sui.Require().NoError(err)
 
-			expectedNorm := NormalizeCtExpr(tc.expected)
-			actualNorm := NormalizeCtExpr(str)
+			expectedNorm := tc.expected
+
+			actualNorm := str
 			sui.Require().Equal(expectedNorm, actualNorm)
 		})
 	}
@@ -102,42 +101,4 @@ func (sui *ctEncoderAdvancedTestSuite) Test_CtEncodeIR_Complex() {
 
 func Test_CtEncoderAdvanced(t *testing.T) {
 	suite.Run(t, new(ctEncoderAdvancedTestSuite))
-}
-
-func NormalizeCtExpr(input string) string {
-	// нормализуем 'ct state != ...' и аналогичные
-	negationPrefixes := []string{
-		"ct state !=",
-		"ct status !=",
-		"ct event !=",
-	}
-	for _, prefix := range negationPrefixes {
-		if strings.HasPrefix(input, prefix) {
-			return normalizeWithPrefix(input, prefix)
-		}
-	}
-
-	// обычные (не инвертированные)
-	prefixes := []string{
-		"ct state ",
-		"ct status ",
-		"ct event ",
-	}
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(input, prefix) {
-			return normalizeWithPrefix(input, prefix)
-		}
-	}
-	return input
-}
-
-func normalizeWithPrefix(input, prefix string) string {
-	rest := strings.TrimPrefix(input, prefix)
-	rest = strings.TrimSpace(rest)
-	values := strings.Split(rest, ",")
-	for i := range values {
-		values[i] = strings.TrimSpace(values[i])
-	}
-	sort.Strings(values)
-	return prefix + strings.Join(values, ",")
 }
