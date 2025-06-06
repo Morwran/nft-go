@@ -8,53 +8,72 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type exthdrEncoderTestSuite struct {
+type exthdrIRTestSuite struct {
 	suite.Suite
 }
 
-func (sui *exthdrEncoderTestSuite) Test_ExthdrEncodeIR_ValidOnly() {
-	testCases := []struct {
+func (sui *exthdrIRTestSuite) Test_ExthdrEncodeIR() {
+	testData := []struct {
 		name     string
 		exthdr   *expr.Exthdr
 		regSetup func(ctx *ctx)
 		expected string
 	}{
 		{
-			name: "tcp option present → store to register",
-			exthdr: &expr.Exthdr{
-				Op:           expr.ExthdrOpTcpopt,
-				Type:         2,
-				Flags:        unix.NFT_EXTHDR_F_PRESENT,
-				DestRegister: 1,
-			},
-			expected: "", // EncodeIR вернёт nil, ErrNoIR
-		},
-		{
-			name: "ipv6 option present → store to register",
+			name: "read IPv6 option into register (no IR)",
 			exthdr: &expr.Exthdr{
 				Op:           expr.ExthdrOpIpv6,
 				Type:         1,
 				Flags:        unix.NFT_EXTHDR_F_PRESENT,
-				DestRegister: 2,
+				DestRegister: 1,
 			},
-			expected: "", // тоже вернёт nil, ErrNoIR
+			expected: "",
 		},
 		{
-			name: "exthdr read and compare (source + rhs)",
+			name: "compare with RHS via register (ip option)",
 			exthdr: &expr.Exthdr{
-				Type:           4,
-				Offset:         8,
-				Len:            2,
+				Op:             expr.ExthdrOpIpv6,
+				Type:           5,
+				Offset:         12,
+				Len:            1,
 				SourceRegister: 3,
 			},
 			regSetup: func(ctx *ctx) {
-				ctx.reg.Set(3, regVal{HumanExpr: "0x1234"})
+				ctx.reg.Set(3, regVal{HumanExpr: "0xab"})
 			},
-			expected: "exthdr @4,8,2 set 0x1234",
+			expected: "ip option @5,12,1 set 0xab",
+		},
+		{
+			name: "compare with RHS via register (tcp option)",
+			exthdr: &expr.Exthdr{
+				Op:             expr.ExthdrOpTcpopt,
+				Type:           2,
+				Offset:         4,
+				Len:            1,
+				SourceRegister: 4,
+			},
+			regSetup: func(ctx *ctx) {
+				ctx.reg.Set(4, regVal{HumanExpr: "0x42"})
+			},
+			expected: "tcp option @2,4,1 set 0x42",
+		},
+		{
+			name: "unknown Op → fallback to exthdr",
+			exthdr: &expr.Exthdr{
+				Op:             99,
+				Type:           9,
+				Offset:         1,
+				Len:            1,
+				SourceRegister: 5,
+			},
+			regSetup: func(ctx *ctx) {
+				ctx.reg.Set(5, regVal{HumanExpr: "value"})
+			},
+			expected: "exthdr @9,1,1 set value",
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range testData {
 		sui.Run(tc.name, func() {
 			ctx := &ctx{}
 			if tc.regSetup != nil {
@@ -74,6 +93,6 @@ func (sui *exthdrEncoderTestSuite) Test_ExthdrEncodeIR_ValidOnly() {
 	}
 }
 
-func Test_ExthdrEncoder(t *testing.T) {
-	suite.Run(t, new(exthdrEncoderTestSuite))
+func Test_ExthdrEncodeIR(t *testing.T) {
+	suite.Run(t, new(exthdrIRTestSuite))
 }
