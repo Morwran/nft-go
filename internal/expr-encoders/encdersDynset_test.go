@@ -9,74 +9,85 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type dynsetIRTestSuite struct {
+type dynsetIRExprTestSuite struct {
 	suite.Suite
 }
 
-func (sui *dynsetIRTestSuite) Test_DynsetEncodeIR() {
+func (sui *dynsetIRExprTestSuite) Test_DynsetEncodeIR_ExprBased() {
 	testData := []struct {
 		name     string
-		dynset   *expr.Dynset
-		srcKey   string
-		srcData  string
+		exprs    []expr.Any
 		expected string
 	}{
 		{
-			name: "add to IPv4 set",
-			dynset: &expr.Dynset{
-				Operation: uint32(DynSetOPAdd),
-				SetName:   "testset",
-				SrcRegKey: 1,
-			},
-			srcKey:   "ip saddr",
-			expected: "add @testset { ip saddr }",
-		},
-		{
-			name: "add to set with timeout",
-			dynset: &expr.Dynset{
-				Operation: uint32(DynSetOPAdd),
-				SetName:   "timeoutset",
-				SrcRegKey: 2,
-				Timeout:   10 * time.Second,
-			},
-			srcKey:   "ip saddr",
-			expected: "add @timeoutset { ip saddr timeout 10s }",
-		},
-		{
-			name: "update set with counter",
-			dynset: &expr.Dynset{
-				Operation: uint32(DynSetOPUpdate),
-				SetName:   "updset",
-				SrcRegKey: 3,
-				Exprs: []expr.Any{
-					&expr.Counter{},
+			name: "add to IPv4 set via Payload",
+			exprs: []expr.Any{
+				&expr.Payload{
+					DestRegister: 1,
+					Base:         expr.PayloadBaseNetworkHeader,
+					Offset:       12, // ip saddr
+					Len:          4,
+				},
+				&expr.Dynset{
+					Operation: uint32(DynSetOPAdd),
+					SetName:   "ipv4set",
+					SrcRegKey: 1,
 				},
 			},
-			srcKey:   "ip saddr",
+			expected: "add @ipv4set { ip saddr }",
+		},
+		{
+			name: "add to set with timeout via Payload",
+			exprs: []expr.Any{
+				&expr.Payload{
+					DestRegister: 2,
+					Base:         expr.PayloadBaseNetworkHeader,
+					Offset:       12, // ip saddr
+					Len:          4,
+				},
+				&expr.Dynset{
+					Operation: uint32(DynSetOPAdd),
+					SetName:   "timeoutset",
+					SrcRegKey: 2,
+					Timeout:   5 * time.Second,
+				},
+			},
+			expected: "add @timeoutset { ip saddr timeout 5s }",
+		},
+		{
+			name: "update set with counter via Payload",
+			exprs: []expr.Any{
+				&expr.Payload{
+					DestRegister: 3,
+					Base:         expr.PayloadBaseNetworkHeader,
+					Offset:       12, // ip saddr
+					Len:          4,
+				},
+				&expr.Dynset{
+					Operation: uint32(DynSetOPUpdate),
+					SetName:   "updset",
+					SrcRegKey: 3,
+					Exprs: []expr.Any{
+						&expr.Counter{},
+					},
+				},
+			},
 			expected: "update @updset { ip saddr counter packets 0 bytes 0 }",
 		},
 	}
 
 	for _, tc := range testData {
 		sui.Run(tc.name, func() {
-			reg := regHolder{}
-			reg.Set(regID(tc.dynset.SrcRegKey), regVal{HumanExpr: tc.srcKey})
-			if tc.dynset.SrcRegData != 0 {
-				reg.Set(regID(tc.dynset.SrcRegData), regVal{HumanExpr: tc.srcData})
+			rule := &nftables.Rule{
+				Exprs: tc.exprs,
 			}
-
-			ctx := &ctx{
-				reg:  reg,
-				rule: &nftables.Rule{},
-			}
-			enc := &dynsetEncoder{dynset: tc.dynset}
-			ir, err := enc.EncodeIR(ctx)
+			str, err := NewRuleExprEncoder(rule).Format()
 			sui.Require().NoError(err)
-			sui.Require().Equal(tc.expected, ir.Format())
+			sui.Require().Equal(tc.expected, str)
 		})
 	}
 }
 
-func Test_DynsetEncodeIR(t *testing.T) {
-	suite.Run(t, new(dynsetIRTestSuite))
+func Test_DynsetEncodeIR_Expr(t *testing.T) {
+	suite.Run(t, new(dynsetIRExprTestSuite))
 }
