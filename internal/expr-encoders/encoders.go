@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	pr "github.com/Morwran/nft-go/pkg/protocols"
-  
+
 	"github.com/H-BF/corlib/pkg/atomic"
 	nft "github.com/google/nftables"
 	"github.com/google/nftables/expr"

@@ -1,6 +1,7 @@
 package encoders
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -37,13 +38,14 @@ func (b *ctEncoder) EncodeIR(ctx *ctx) (irNode, error) {
 		return nil, ErrNoIR
 	}
 	srcReg, ok := ctx.reg.Get(regID(ct.Register))
-
 	if !ok {
 		return nil, errors.Errorf("%T statement has no expression", ct)
 	}
-
+	if imm, ok := srcReg.Expr.(*expr.Immediate); ok && len(imm.Data) >= 4 {
+		val := binary.LittleEndian.Uint32(imm.Data)
+		return simpleIR(fmt.Sprintf("%s set %d", human, val)), nil
+	}
 	rhs := srcReg.HumanExpr
-
 	return simpleIR(fmt.Sprintf("%s set %s", human, rhs)), nil
 }
 
@@ -69,7 +71,6 @@ func (b *ctEncoder) EncodeJSON(ctx *ctx) ([]byte, error) {
 	}
 
 	srcReg, ok := ctx.reg.Get(regID(ct.Register))
-
 	if !ok || srcReg.Data == nil {
 		return nil, errors.Errorf("%T statement has no expression", ct)
 	}
